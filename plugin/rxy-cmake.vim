@@ -24,19 +24,37 @@ echom "the project dir is". s:rxy_cmake_project_dir
 endfunction
 
 function! Rxy_cmake_deal_build_dir(auto_remove)
+    let l:build_dir_exists = 0
+    let l:decide_remove = 0
     ruby << EOF
-    require 'fileutils'
-    auto_remove = VIM::evaluate("a:auto_remove")
     project_dir = VIM::evaluate("s:rxy_cmake_project_dir")
     if File::exists?(project_dir + "/build")
-        if auto_remove
-            FileUtils.rmtree(project_dir + "/build")
-            Dir.mkdir(project_dir + "/build")
-        end
+        VIM::command("let l:build_dir_exists=1")
     else
-        Dir.mkdir(project_dir + "/build")
+        VIM::command("let l:build_dir_exists=0")
     end
 EOF
+    if ( l:build_dir_exists == 1)
+        if((a:auto_remove == 1) || (input("build dir exists, y to rebuild it:") ==# 'y'))
+            let l:decide_remove = 1
+        else
+            let l:decide_remove = 0
+        endif
+    else
+        ruby <<EOF
+        project_dir = VIM::evaluate("s:rxy_cmake_project_dir")
+        Dir.mkdir(project_dir + "/build")
+EOF
+        return
+    endif
+    if l:decide_remove == 1
+        ruby << EOF
+        require 'fileutils'
+        project_dir = VIM::evaluate("s:rxy_cmake_project_dir")
+        FileUtils.rmtree(project_dir + "/build")
+        Dir.mkdir(project_dir + "/build")
+EOF
+    endif
 endfunction
 
 function! Rxy_cmake_run_cmake_or_make_in_build(isCmake)
@@ -52,12 +70,29 @@ function! Rxy_cmake_run_cmake_or_make_in_build(isCmake)
     execute "cd " . l:currend_dir
 endfunction
 
-augroup testgroup
-    autocmd!
-    autocmd BufWritePost rxy-cmake.vim :so %
-    autocmd BufWritePost rxy-cmake.vim :call Rxy_cmake_find_project_path()
-    autocmd BufWritePost rxy-cmake.vim :call Rxy_cmake_deal_build_dir(1)
-    autocmd BufWritePost rxy-cmake.vim :call Rxy_cmake_run_cmake_or_make_in_build(1)
-    autocmd BufWritePost rxy-cmake.vim :call Rxy_cmake_run_cmake_or_make_in_build(0)
-augroup END
+"augroup testgroup
+    "autocmd!
+    "autocmd BufWritePost rxy-cmake.vim :so %
+    "autocmd BufWritePost rxy-cmake.vim :call Rxy_cmake_find_project_path()
+    "autocmd BufWritePost rxy-cmake.vim :call Rxy_cmake_deal_build_dir(0)
+    "autocmd BufWritePost rxy-cmake.vim :call Rxy_cmake_run_cmake_or_make_in_build(1)
+    "autocmd BufWritePost rxy-cmake.vim :call Rxy_cmake_run_cmake_or_make_in_build(0)
+"augroup END
 
+function! Rxy_cmake_preCmake()
+    call Rxy_cmake_find_project_path()
+    if s:rxy_cmake_project_dir ==# ''
+        echohl ErrorMsg
+        echo "Can not find the project dir"
+        echohl None
+        return
+    endif
+    call Rxy_cmake_deal_build_dir(0)
+    call Rxy_cmake_run_cmake_or_make_in_build(1)
+endfunction
+
+augroup rxyCmakeGroup
+    autocmd!
+    autocmd FileType c,cpp command -nargs=0 Rcmake call Rxy_cmake_preCmake()
+    autocmd FileType c,cpp command  Rmake call Rxy_cmake_run_cmake_or_make_in_build(0)
+augroup END
