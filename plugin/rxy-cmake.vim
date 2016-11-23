@@ -91,8 +91,8 @@ function! Rxy_cmake_preCmake()
     call Rxy_cmake_run_cmake_or_make_in_build(1)
 endfunction
 
-augroup rxyCmakeGroup
-    autocmd!
-    autocmd FileType c,cpp command -nargs=0 Rcmake call Rxy_cmake_preCmake()
-    autocmd FileType c,cpp command  Rmake call Rxy_cmake_run_cmake_or_make_in_build(0)
-augroup END
+"augroup rxyCmakeGroup
+    "autocmd!
+    autocmd FileType c,cpp command! -nargs=0 Rcmake call Rxy_cmake_preCmake()
+    autocmd FileType c,cpp command! Rmake call Rxy_cmake_run_cmake_or_make_in_build(0)
+"augroup END
